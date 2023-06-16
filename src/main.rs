@@ -84,10 +84,10 @@ impl Graph {
         } else if (d0 > d3) {
             let mut tmp = vec![];
             for v in (j..k) {
-                tmp.push(v);
+                tmp.push(cycle[v]);
             }
             for v in (i..j) {
-                tmp.push(v);
+                tmp.push(cycle[v]);
             }
             for v in (i..k) {
                 cycle[v] = tmp[v - i];
@@ -245,5 +245,5 @@ fn main() {
     // Create a Graph
     println!("Cost matrix:\n{}", cost_matrix);
     let mut graph = Graph::new(instance.dimension, cost_matrix);
-    graph.ant_colony_optimization(1000, 50);
+    graph.ant_colony_optimization(200, 50);
 }
