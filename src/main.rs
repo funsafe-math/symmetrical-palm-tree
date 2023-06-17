@@ -1,9 +1,11 @@
 use ndarray_stats::QuantileExt;
-use rand::Rng;
+// use rand::Rng;
+
 use random_choice::random_choice;
 use rayon::prelude::*;
-use std::{fs, io::Cursor, iter::repeat, mem::swap, vec};
-use tsplib::{read, EdgeWeightType, NodeCoord, Type};
+use std::env;
+use std::{vec};
+use tsplib::{NodeCoord};
 
 #[derive(Debug, Default)]
 struct Graph {
@@ -24,21 +26,15 @@ impl Graph {
     pub fn cycle_length(&self, cycle: &[usize]) -> f32 {
         let mut length = 0.0;
         for i in 0..(cycle.len() - 1) {
-            length += self
-                .distance_matrix
-                .get((
-                    cycle.get(i).unwrap().clone(),
-                    cycle.get(i + 1).unwrap().clone(),
-                ))
-                .unwrap();
+            length += self.distance_matrix[(
+                cycle.get(i).unwrap().clone(),
+                cycle.get(i + 1).unwrap().clone(),
+            )];
         }
-        length += self
-            .distance_matrix
-            .get((
-                cycle.last().unwrap().clone(),
-                cycle.first().unwrap().clone(),
-            ))
-            .unwrap();
+        length += self.distance_matrix[(
+            cycle.last().unwrap().clone(),
+            cycle.first().unwrap().clone(),
+        )];
         length
     }
 
@@ -72,24 +68,24 @@ impl Graph {
             + self.distance_matrix[(c, d)]
             + self.distance_matrix[(e, a)];
 
-        if (d0 > d1) {
+        if d0 > d1 {
             cycle[i..j].reverse();
             return -d0 + d1;
-        } else if (d0 > d2) {
+        } else if d0 > d2 {
             cycle[j..k].reverse();
             return -d0 + d2;
-        } else if (d0 > d4) {
+        } else if d0 > d4 {
             cycle[i..k].reverse();
             return -d0 + d4;
-        } else if (d0 > d3) {
+        } else if d0 > d3 {
             let mut tmp = vec![];
-            for v in (j..k) {
+            for v in j..k {
                 tmp.push(cycle[v]);
             }
-            for v in (i..j) {
+            for v in i..j {
                 tmp.push(cycle[v]);
             }
-            for v in (i..k) {
+            for v in i..k {
                 cycle[v] = tmp[v - i];
             }
             return -d0 + d3;
@@ -107,7 +103,7 @@ impl Graph {
                 }
             }
         }
-        if (delta >= 0.0) {
+        if delta >= 0.0 {
             println!("three_opt did not find improvement");
         }
     }
@@ -136,7 +132,7 @@ impl Graph {
 
             // ignore top (worst) half
             // generated_cycles.truncate(generated_cycles.len() / 2);
-            for _ in (0..2) {
+            for _ in 0..2 {
                 generated_cycles.push((best_cycle.clone(), best_len)); // Elitism
             }
 
@@ -171,9 +167,10 @@ impl Graph {
         println!("Best found cycle was: {:?}", best_cycle);
     }
 
-    pub fn traverse_graph(&self, starting_node_ix: usize) -> (Vec<usize>, f32) {
-        let mut th_rng = rand::thread_rng();
-        let starting_node_ix = th_rng.gen_range(0..self.n_nodes);
+    pub fn traverse_graph(&self, _starting_node_ix: usize) -> (Vec<usize>, f32) {
+        // let mut th_rng = rand::thread_rng();
+        // let starting_node_ix = th_rng.gen_range(0..self.n_nodes);
+        let starting_node_ix = fastrand::choice(0..self.n_nodes).unwrap();
         // println!("Using starting node : {}", starting_node_ix);
         let mut visited = vec![false; self.n_nodes];
 
@@ -184,7 +181,7 @@ impl Graph {
         let mut jump_ix = vec![];
         let mut jump_val = vec![];
         let mut rng = random_choice();
-        for step in 0..self.n_nodes - 1 {
+        for _step in 0..self.n_nodes - 1 {
             jump_ix.clear();
             jump_val.clear();
             for node in 0..self.n_nodes {
@@ -219,11 +216,18 @@ impl Graph {
 }
 
 fn main() {
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        println!("Usage : {} <tsp instance>", args[0]);
+        return;
+    }
+    let filename = &args[1];
+    // let instance = tsplib::read("res/d198.tsp").unwrap();
+    let instance = tsplib::read(filename).unwrap();
     // let instance = tsplib::read("res/att48.tsp").unwrap();
     // let instance = tsplib::read("res/berlin52.tsp").unwrap();
-    let instance = tsplib::read("res/d198.tsp").unwrap();
     // let instance = tsplib::read("res/att532.tsp").unwrap();
-    // let instance = tsplib::read("res/att532.tsp").unwrap();
+    // let instance = tsplib::read("res/u1060.tsp").unwrap();
     println!("Name: {}\nDimension: {}", instance.name, instance.dimension);
 
     // Load coordinates
@@ -233,7 +237,7 @@ fn main() {
     };
     let coordinates: Vec<_> = node_index_coordinates
         .iter()
-        .map(|(i, x, y)| (*x as f32, *y as f32))
+        .map(|(_i, x, y)| (*x as f32, *y as f32))
         .collect();
 
     // Create cost matrix
@@ -245,5 +249,5 @@ fn main() {
     // Create a Graph
     println!("Cost matrix:\n{}", cost_matrix);
     let mut graph = Graph::new(instance.dimension, cost_matrix);
-    graph.ant_colony_optimization(200, 50);
+    graph.ant_colony_optimization(1000, 50);
 }
