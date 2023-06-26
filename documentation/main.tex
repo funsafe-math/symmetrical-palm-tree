@@ -1,0 +1,148 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1.5in]{geometry}
+% \usepackage[polski]{babel}
+\usepackage[polish]{babel}
+\usepackage{amsmath}
+
+\usepackage[
+backend=biber,
+style=numeric-comp,
+sorting=ynt
+]{biblatex}
+\addbibresource{references.bib}
+
+
+\title{Algorytmy Inspirowane Biologicznie – Optymalizacja Kolonii Mrówek}
+\date{Kraków 2023}
+\author{Krzysztof Ćwiertnia, Wojciech Wiśniewski}
+
+\begin{document}
+
+\maketitle
+
+\section{Cel projektu}
+Celem projektu jest rozwiązanie problemu komiwojażera poprzez wykorzystanie
+algorytmu mrówkowego.
+
+\section{Wstęp teoretyczny}
+Optymalizacja kolonii mrówek (ACO) to meta heurystyka, w której kolonia
+sztucznych mrówek współpracuje w znajdowaniu dobrych rozwiązań trudnych
+problemów optymalizacji dyskretnej. Współpraca jest kluczowym elementem projektu
+algorytmów ACO: Wybór polega na przydzieleniu zasobów obliczeniowych do zestawu
+stosunkowo prostych agentów (sztucznych mrówek), które komunikują się pośrednio
+przez stygmatyzację, czyli poprzez komunikację pośrednią za pośrednictwem
+środowiska.
+
+Algorytmy ACO mogą być wykorzystywane do rozwiązywania zarówno statycznych, jak
+i dynamicznych kombinatorycznych problemów z optymalizacją. Problemy statyczne
+to takie, w których cechy problemu są podane raz na zawsze, kiedy problem jest
+zdefiniowany i nie ulegają zmianie, gdy problem jest rozwiązywany.
+Paradygmatycznym przykładem takich problemów jest tzw. Problem Komiwojażera
+(TSP), w którym lokalizacje miast i ich względne odległości są częścią definicji
+problemu i nie zmieniają się w czasie wykonywania. Przeciwnie, dynamiczne
+problemy definiuje się jako funkcję pewnych wielkości, których wartość wyznacza
+dynamika systemu bazowego. Instancja problemu zmienia się zatem w czasie
+wykonywania i algorytm optymalizacji musi być zdolny do adaptacji do
+zmieniającego się środowiska. Przykładem takiej sytuacji, są problemy z
+trasowaniem pracy, w których ruch danych i topologia sieci mogą się różnić w
+czasie.\cite{MIT}
+
+\section{Problem Komiwojażera}
+Problem komiwojażera (TSP) jest dobrze znanym i szeroko badanym problemem z
+dziedziny optymalizacji kombinatorycznej i przyciąga informatyków, matematyków i
+innych. Jest znany jako klasyczny problem NP-zupełny, który ma wielkie
+przestrzenie wyszukiwania i jest bardzo trudny do rozwiązania.
+
+Definicja TSP to: mając dane N miast, jeśli sprzedawca zaczynając od swojego
+rodzinnego miasta ma odwiedzić każde miasto dokładnie raz a następnie wrócić do
+domu, znajdź taką kolejność zwiedzania, że całkowita przebyta odległość (koszt)
+jest minimalna.\cite{IACSIT, Jishou}
+
+Mamy do czynienia z tym problemem na co dzień, chociażby robiąc zakupy, chcemy
+przejść jak najmniej i jednocześnie zdobyć wszystkie potrzebne nam artykuły.
+Oczywiście problem ten pojawia się w poważniejszej formie w przemyśle,
+gdy kurier chce odwiedzić wszystkich klientów w jak najkrótszym czasie, czy
+wiertło maszyny CNC ma spędzić jak największą część czasu pracując, nie czekać
+na transport na swoje miejsce.
+
+\section{Implementacja}
+Do zaimplementowania algorytmu mrówkowego została wykorzystana macierz
+sąsiedztwa, w której wagi krawędzi oznaczają odległości między miastami. Każda
+mrówka jest początkowo umieszczona na jednym z losowo wybranych miast i w każdym
+kolejnym kroku iteracji odwiedza kolejne miasto do momentu odwiedzenia
+wszystkich. Pozwala to na szybkie policzenie długości danej trasy.
+
+\subsection*{Opis działania algorytmu}
+Poza macierzą sąsiedztwa istnieje również macierz intensywności feromonów.  Ta
+macierz jest głównym elementem algorytmu, mrówki w każdej iteracji chodzą po
+grafie wybierając kolejne wierzchołki na podstawie macierzy feromonów, jak i
+macierzy sąsiedztwa.
+
+Po zakończonej iteracji macierz feromonów jest aktualizowana o informacje
+zdobyte przez mrówki.
+
+Na wysokim poziome, wykonywany algorytm jest następujący:
+\begin{verbatim}
+    while(!shouldTerminate()) {
+        simulateAnts();     // na podstawie macierzy incydencji i feromonów
+        localSearch();      // opcjonalne, ale bardzo pomocne
+        updatePheromones();
+    }
+\end{verbatim}
+
+Feromony zostawia tylko połowa mrówek o najlepszych (najmniejszych) wynikach.
+Oznacza to, że krawędzie z feromonami należą do najlepszych aktualnie
+znalezionych ścieżek. Krawędzie z feromonami są częściej wybierane w kolejnych
+iteracjach, co daje lepszy początek kolejnym próbą.
+
+Prawdopodobieństwo wybrania krawędzi $ij$ jest podane wzorem
+(\ref{eq:probability}):
+\begin{align}
+    p_{ij} = \frac{\tau_{ij}^\alpha \ \eta_{ij} ^\beta}{\sum_{l\in\mathcal{N}_i} \tau_{il}^\alpha \ \eta_{il} ^\beta} \label{eq:probability}
+\end{align}
+Gdzie
+\begin{itemize}
+    \item $\tau_{ij} = m/C$
+          \subitem $m$ jest liczbą mrówek
+          \subitem $C$ jest długością cyklu
+    \item $\eta_{ij} = 1/d_{ij}$
+          \subitem $d_{ij}$ jest odległością między wierzchołkami
+    \item $\alpha$ i $\beta$ są stałymi, które należy dobrać
+\end{itemize}
+
+Powyższy prosty algorytm, zazwyczaj nie dawał zadowalających rezultatów, mimo
+dobrania wykładników według literatury. \cite{MIT}
+
+Algorytm został rozszerzony o poniższe ulepszenia:
+\paragraph{EAS (Elitist Ant System)}
+Gdzie feromony najlepszej mrówki liczą się kilkakrotnie.
+\paragraph{AS\textsubscript{rank} (Ranked-based Ant System).}
+Gdzie waga feromonów danej mrówki jest zależna od jej miejsca w rankingu
+wyników.
+
+Po powyższych ulepszeniach algorytm radził sobie lepiej, niestety nadal nie
+optymalnie. Wyniki były często dwukrotnie wyższe od optimum.
+
+Została dodana ostatnia poprawka, mianowicie wyszukiwanie lokalne. Polegające na
+analizowaniu cyklu wygenerowanego przez mrówkę i ocenie czy zamiana kolejności
+łączenia kolejnych 3 wierzchołków poprawi wynik. Zauważone poprawki są stosowane
+przed obliczeniem wyniku dla mrówki. Można rozwiązywać problemy TSP samym tym
+algorytmem, niestety szybko staje się to bardzo powolne, gdyż złożoność takiego
+sposobu to $O(n^3)$.
+
+Rozwiązania testowane były na nieskierowanych problemach z
+biblioteki problemów komiwojażera {\tt TSPLIB}.
+
+
+\subsection{Konkluzja}
+Algorytm mrówkowy wraz z wyszukiwaniem lokalnym daje zazwyczaj wyniki bardzo
+bliskie optymalnym, będąc lepszy niż każdy z algorytmów solo. W 89\% przypadków
+wyniki były mniej niż 10\% od optimum.
+
+% \bibliographystyle{IEEEtran}
+\printbibliography
+
+\end{document}
